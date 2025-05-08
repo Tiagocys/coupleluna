@@ -1,18 +1,10 @@
 'use client'
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useState } from 'react'
 import supabase from '../../lib/supabase'
+import type { Database } from '../../types/database'
 
-interface Profile {
-  id: string
-  username: string
-  display_name: string | null
-  bio: string | null
-  avatar_url: string | null
-  is_creator: boolean
-  created_at: string
-}
+type Profile = Database['public']['Tables']['profiles']['Row']
 
 export default function Home() {
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -20,7 +12,7 @@ export default function Home() {
 
   useEffect(() => {
     supabase
-      .from<any, Profile>('profiles')
+      .from('profiles')
       .select('*')
       .then(({ data, error }) => {
         if (error) setError(error.message)
