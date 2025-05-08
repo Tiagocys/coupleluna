@@ -42,3 +42,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Se você tiver pastas de IDEs:
+.vscode/
+.idea/
+
+# Supabase local (se usar o emulador ou gerar um SQLite local)
+supabase/.db
+supabase/.config  
+# (o config.toml em geral é seguro de versionar, mas ignore qualquer arquivo que contenha credenciais locais)
+
+# Arquivos de lock do pnpm (devem ir ao repositório, então NÃO ignore)
+# ─ nada a fazer aqui, apenas certifique-se de commitar `pnpm-lock.yaml`

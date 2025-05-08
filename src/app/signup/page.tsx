@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import supabase from '../../../lib/supabase'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -10,60 +11,90 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // flag para travar cliques repetidos imediatamente
+  const isSubmitting = useRef(false)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
+    if (isSubmitting.current) return       // se já estamos submetendo, ignora
+    isSubmitting.current = true            // trava de vez
     setLoading(true)
+    setError(null)
 
-    const res = await fetch('/api/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-
-    const body = await res.json()
-    setLoading(false)
-
-    if (!res.ok) {
-      setError(body.error || 'Ocorreu um erro.')
+    if (!email || !password) {
+      setError('Please fill in both email and password.')
+      setLoading(false)
+      isSubmitting.current = false
       return
     }
 
-    // redireciona para login
-    router.push('/login')
+    // cria conta e já recebe session (auto-login)
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+
+    setLoading(false)
+
+    if (error) {
+      setError(error.message)
+      isSubmitting.current = false
+      return
+    }
+
+    if (data.session) {
+      router.push('/complete-profile')
+    } else {
+      // se não teve session (por segurança),
+      // redireciona para login
+      router.push('/login')
+    }
   }
 
   return (
     <main className="max-w-md mx-auto p-8">
-      <h1 className="text-2xl font-bold mb-6">Criar Conta</h1>
+      <h1 className="text-2xl font-bold mb-6">Create an Account</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block mb-1">Email</label>
+          <label htmlFor="email" className="block mb-1">Email</label>
           <input
+            id="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             required
             className="w-full border px-3 py-2 rounded"
+            disabled={loading}
           />
         </div>
         <div>
-          <label className="block mb-1">Senha</label>
+          <label htmlFor="password" className="block mb-1">Password</label>
           <input
+            id="password"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             required
             className="w-full border px-3 py-2 rounded"
+            disabled={loading}
           />
         </div>
         {error && <p className="text-red-500">{error}</p>}
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition disabled:opacity-50"
         >
-          {loading ? 'Criando...' : 'Criar Conta'}
+          {loading ? 'Creating…' : 'Create Account'}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            supabase.auth.signInWithOAuth({ provider: 'google' })
+          }
+          className="w-full mt-4 bg-red-600 text-white py-2 rounded hover:bg-red-700 transition"
+        >
+          Sign up with Google
         </button>
       </form>
     </main>

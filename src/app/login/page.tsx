@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import supabase from '../../../lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -14,6 +15,13 @@ export default function LoginPage() {
     e.preventDefault()
     setError(null)
     setLoading(true)
+
+    // se não preencher os campos, já aborta
+    if (!email || !password) {
+      setError('Preencha email e senha.')
+      setLoading(false)
+      return
+    }
 
     const res = await fetch('/api/login', {
       method: 'POST',
@@ -29,10 +37,11 @@ export default function LoginPage() {
       return
     }
 
-    // você pode armazenar session em cookie/localStorage aqui
-    // ex.: localStorage.setItem('sbSession', JSON.stringify(body.session))
+    const { session } = body
 
-    // redirecionar para home
+    // persiste a sessão no cliente Supabase
+    await supabase.auth.setSession(session)
+
     router.push('/')
   }
 
@@ -41,21 +50,32 @@ export default function LoginPage() {
       <h1 className="text-2xl font-bold mb-6">Login</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block mb-1">Email</label>
+          <button
+            type="button"
+            onClick={() =>
+              supabase.auth.signInWithOAuth({ provider: 'google' })
+            }
+            className="w-full mt-4 bg-red-600 text-white py-2 rounded hover:bg-red-700 transition"
+          >
+            Entrar com Google
+          </button>
+          <label htmlFor="email" className="block mb-1">Email</label>
           <input
+            id="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             required
             className="w-full border px-3 py-2 rounded"
           />
         </div>
         <div>
-          <label className="block mb-1">Senha</label>
+          <label htmlFor="password" className="block mb-1">Senha</label>
           <input
+            id="password"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             required
             className="w-full border px-3 py-2 rounded"
           />
