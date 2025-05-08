@@ -52,7 +52,9 @@ export type Database = {
           display_name: string | null
           id: string
           is_creator: boolean | null
+          profile_completed: boolean
           username: string
+          verification_requested: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -61,7 +63,9 @@ export type Database = {
           display_name?: string | null
           id: string
           is_creator?: boolean | null
+          profile_completed?: boolean
           username: string
+          verification_requested?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -70,7 +74,9 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_creator?: boolean | null
+          profile_completed?: boolean
           username?: string
+          verification_requested?: boolean
         }
         Relationships: []
       }
