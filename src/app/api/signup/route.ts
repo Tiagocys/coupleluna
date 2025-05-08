@@ -59,11 +59,12 @@ export async function POST(req: Request) {
       { user: authData.user },
       { status: 201 }
     )
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Signup route error:', err)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
+  
 }
