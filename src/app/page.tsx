@@ -19,14 +19,11 @@ export default function Home() {
 
   useEffect(() => {
     supabase
-      .from<Profile>('profiles')
+      .from<any, Profile>('profiles')
       .select('*')
       .then(({ data, error }) => {
-        if (error) {
-          setError(error.message)
-        } else {
-          setProfiles(data ?? [])
-        }
+        if (error) setError(error.message)
+        else setProfiles(data ?? [])
       })
   }, [])
 
