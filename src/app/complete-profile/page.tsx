@@ -1,45 +1,28 @@
 'use client'
 
+import { Header } from '../../components/Header'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import supabase from '../../../lib/supabase'
 
 export default function CompleteProfilePage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<'info' | 'verify'>('info')
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
     username: '',
-    wantVerify: false as boolean,
+    wantVerify: false,
     idFront: null as File | null,
     idBack: null as File | null,
     selfie: null as File | null,
   })
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  // pega dados do profile atual, se houver
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      const user = data.session?.user
-      if (!user) return router.push('/login')
-      // opcional: carregar profile existente e preencher form
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-        .then(({ data: profile }) => {
-          if (profile) {
-            setForm(f => ({
-              ...f,
-              firstName: profile.display_name?.split(' ')[0] || '',
-              lastName: profile.display_name?.split(' ').slice(1).join(' ') || '',
-              username: profile.username,
-            }))
-          }
-        })
+      if (!data.session) return router.push('/login')
     })
   }, [])
 
@@ -54,121 +37,185 @@ export default function CompleteProfilePage() {
     e.preventDefault()
     setError(null)
     if (!form.firstName || !form.lastName || !form.username) {
-      return setError('Please fill in all fields.')
+      return setError('Please complete all fields.')
     }
     setLoading(true)
-    const {
-      data: { session },
-      error: err,
-    } = await supabase.auth.getSession()
+    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return router.push('/login')
-    // atualiza profile
+
+    // atualiza os dados básicos
     const { error: updErr } = await supabase
       .from('profiles')
       .update({
-        display_name: form.firstName + ' ' + form.lastName,
+        display_name: `${form.firstName} ${form.lastName}`,
         username: form.username,
-      })//
+        profile_completed: true,
+      })
       .eq('id', session.user.id)
     if (updErr) {
-      setError(updErr.message)
-      setLoading(false)
+      setError(updErr.message); setLoading(false)
       return
     }
-    await supabase
-    .from('profiles')
-    .update({ profile_completed: true })
-    .eq('id', session.user.id)
+
     setLoading(false)
-    // segue fluxo de verificação?
+    // decide próximo passo
     if (form.wantVerify) setStep('verify')
     else router.push('/')
   }
+
+  const handleBack = () => setStep('info')
 
   const handleSubmitVerify = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     if (!form.idFront || !form.idBack || !form.selfie) {
-      return setError('Please upload all verification images.')
+      return setError('Please upload front, back of ID and a selfie.')
     }
     setLoading(true)
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (!session) return router.push('/login')
+    const { data: { session } } = await supabase.auth.getSession()
+    const prefix = `${session!.user.id}`
 
-    // upload dos arquivos
-    const prefix = `verifications/${session.user.id}`
     for (const [key, file] of [
-    ['idFront', form.idFront],
-    ['idBack', form.idBack],
-    ['selfie', form.selfie],
+      ['idFront', form.idFront],
+      ['idBack', form.idBack],
+      ['selfie', form.selfie],
     ] as const) {
-    const path = `${prefix}/${key}-${file.name}`
-    await supabase
-        .storage
-        .from('private-media')
+      const path = `${prefix}/${key}-${file.name}`
+      const { error: upErr } = await supabase
+        .storage.from('private-media')
         .upload(path, file, { cacheControl: '3600', upsert: true })
+      if (upErr) {
+        setError(upErr.message); setLoading(false)
+        return
+      }
     }
-
-    // atualiza profile com flag de verificação
+    // sinalizar pedido de verificação
     await supabase
       .from('profiles')
       .update({ verification_requested: true })
-      .eq('id', session.user.id)
+      .eq('id', session!.user.id)
 
     setLoading(false)
     router.push('/')
   }
 
   return (
-    <main className="max-w-md mx-auto p-8">
-      {step === 'info' ? (
-        <form onSubmit={handleSubmitInfo} className="space-y-4">
-          <h1 className="text-xl font-bold">Complete your profile</h1>
-          <div>
-            <label>First Name</label>
-            <input name="firstName" value={form.firstName} onChange={handleChange} required />
-          </div>
-          <div>
-            <label>Last Name</label>
-            <input name="lastName" value={form.lastName} onChange={handleChange} required />
-          </div>
-          <div>
-            <label>Username</label>
-            <input name="username" value={form.username} onChange={handleChange} required />
-          </div>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="wantVerify"
-              checked={form.wantVerify}
-              onChange={handleChange}
-            />
-            <label className="ml-2">I want to verify my profile</label>
-          </div>
-          {error && <p className="text-red-500">{error}</p>}
-          <button disabled={loading}>{loading ? 'Saving…' : 'Continue'}</button>
-        </form>
-      ) : (
-        <form onSubmit={handleSubmitVerify} className="space-y-4">
-          <h1 className="text-xl font-bold">Upload verification docs</h1>
-          <div>
-            <label>ID Front</label>
-            <input type="file" name="idFront" accept="image/*" onChange={handleChange} />
-          </div>
-          <div>
-            <label>ID Back</label>
-            <input type="file" name="idBack" accept="image/*" onChange={handleChange} />
-          </div>
-          <div>
-            <label>Selfie with ID</label>
-            <input type="file" name="selfie" accept="image/*" onChange={handleChange} />
-          </div>
-          {error && <p className="text-red-500">{error}</p>}
-          <button disabled={loading}>{loading ? 'Uploading…' : 'Submit Verification'}</button>
-        </form>
-      )}
-    </main>
+    <>
+      <Header />
+      <main className="max-w-md mx-auto p-8">
+        <h1 className="text-2xl font-bold mb-4">Complete Your Profile</h1>
+
+        {step === 'info' ? (
+          <form onSubmit={handleSubmitInfo} className="space-y-4">
+            <div>
+              <label className="block mb-1">First Name</label>
+              <input
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
+                className="w-full border px-3 py-2 rounded"
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Last Name</label>
+              <input
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
+                className="w-full border px-3 py-2 rounded"
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Username</label>
+              <input
+                name="username"
+                value={form.username}
+                onChange={handleChange}
+                className="w-full border px-3 py-2 rounded"
+                disabled={loading}
+              />
+            </div>
+            <div className="flex items-center">
+              <input
+                id="wantVerify"
+                name="wantVerify"
+                type="checkbox"
+                checked={form.wantVerify}
+                onChange={handleChange}
+                disabled={loading}
+              />
+              <label htmlFor="wantVerify" className="ml-2">
+                I want to verify my profile
+              </label>
+            </div>
+            <p className="text-sm text-gray-600">
+              If you choose to verify, you will be asked to upload ID documents and a selfie.
+            </p>
+            {error && <p className="text-red-500">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              {loading ? 'Saving…' : 'Continue'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmitVerify} className="space-y-4">
+            <h2 className="text-xl font-semibold">Upload Verification Docs</h2>
+            <div>
+              <label className="block mb-1">ID Front</label>
+              <input
+                type="file"
+                name="idFront"
+                accept="image/*"
+                onChange={handleChange}
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label className="block mb-1">ID Back</label>
+              <input
+                type="file"
+                name="idBack"
+                accept="image/*"
+                onChange={handleChange}
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Selfie with ID</label>
+              <input
+                type="file"
+                name="selfie"
+                accept="image/*"
+                onChange={handleChange}
+                disabled={loading}
+              />
+            </div>
+            {error && <p className="text-red-500">{error}</p>}
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={handleBack}
+                disabled={loading}
+                className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition disabled:opacity-50"
+              >
+                {loading ? 'Uploading…' : 'Submit Verification'}
+              </button>
+            </div>
+          </form>
+        )}
+      </main>
+    </>
   )
 }

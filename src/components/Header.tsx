@@ -1,54 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import supabase from '../../lib/supabase'
 
 export function Header() {
   const router = useRouter()
+  const pathname = usePathname()
+  const isCompleteProfile = pathname === '/complete-profile'
   const [session, setSession] = useState<any>(null)
 
   useEffect(() => {
-    // carrega sessão inicial
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-    })
-
-    // escuta mudanças de auth
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session)
-
-        // Se entrou (signup ou login via OAuth)
-        if (event === 'SIGNED_IN' && session) {
-          const { user } = session
-
-          // Verifica se já existe profile
-          const { data: existing } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', user.id)
-            .single()
-
-          if (!existing) {
-            // Cria novo profile
-            await supabase.from('profiles').insert({
-              id: user.id,
-              username: user.email!.split('@')[0],
-              display_name:
-                (user.user_metadata as any).full_name || user.email,
-              avatar_url:
-                (user.user_metadata as any).avatar_url || null,
-            })
-          }
-        }
-      }
+      (_event, session) => setSession(session)
     )
-
-    return () => {
-      listener.subscription.unsubscribe()
-    }
+    return () => listener.subscription.unsubscribe()
   }, [])
 
   const handleLogout = async () => {
@@ -58,20 +26,24 @@ export function Header() {
 
   return (
     <nav className="p-4 bg-gray-100 flex items-center">
-      <Link href="/" className="mr-4">
-        Home
-      </Link>
-      {!session ? (
+      {/* Se NÃO for complete-profile, mostra links públicos */}
+      {!isCompleteProfile && (
         <>
-          <Link href="/signup" className="mr-4">
-            Sign Up
-          </Link>
-          <Link href="/login">Log In</Link>
+          <Link href="/" className="mr-4">Home</Link>
+          {!session ? (
+            <>
+              <Link href="/signup" className="mr-4">Sign Up</Link>
+              <Link href="/login">Log In</Link>
+            </>
+          ) : null}
         </>
-      ) : (
+      )}
+
+      {/* Se estiver logado, sempre mostra Logout (mesmo em complete-profile) */}
+      {session && (
         <button
           onClick={handleLogout}
-          className="ml-auto bg-red-600 text-white px-3 py-1 rounded"
+          className={isCompleteProfile ? "ml-auto bg-red-600 text-white px-3 py-1 rounded" : "ml-auto bg-red-600 text-white px-3 py-1 rounded"}
         >
           Log Out
         </button>
