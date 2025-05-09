@@ -58,10 +58,10 @@ export default function CompleteProfilePage() {
       if (!session) return
 
       const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .maybeSingle()
 
       if (error) {
         console.error('Error loading profile:', error.message)
