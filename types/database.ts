@@ -51,6 +51,7 @@ export type Database = {
           created_at: string | null
           display_name: string | null
           id: string
+          is_adm: boolean
           is_creator: boolean | null
           profile_completed: boolean
           username: string
@@ -63,6 +64,7 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           id: string
+          is_adm?: boolean
           is_creator?: boolean | null
           profile_completed?: boolean
           username: string
@@ -75,6 +77,7 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           id?: string
+          is_adm?: boolean
           is_creator?: boolean | null
           profile_completed?: boolean
           username?: string
