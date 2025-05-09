@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import supabase from '../../../lib/supabase'
 
 export default function CompleteProfilePage() {
+  const [initializing, setInitializing] = useState(true)
   const router = useRouter()
   const [step, setStep] = useState<'info' | 'verify'>('info')
   const [form, setForm] = useState({
@@ -21,10 +22,33 @@ export default function CompleteProfilePage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) return router.push('/login')
-    })
+    const url = new URL(window.location.href)
+    const access_token  = url.searchParams.get('access_token')
+    const refresh_token = url.searchParams.get('refresh_token')
+
+    if (access_token && refresh_token) {
+      supabase.auth
+        .setSession({ access_token, refresh_token })
+        .catch((err: any) => console.error('setSession error', err))
+        .finally(() => setInitializing(false))  // <— usa setInitializing
+    } else {
+      setInitializing(false)                    // <— idem
+    }
   }, [])
+
+  // 2) Só depois de initialized=false, valida a sessão
+  useEffect(() => {
+    if (initializing) return                     // <— usa initializing
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!data.session) router.push('/login')
+      })
+      .catch((err: any) => {
+        console.error('getSession error', err)
+        router.push('/login')
+      })
+  }, [initializing, router])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked, files } = e.target
@@ -43,22 +67,26 @@ export default function CompleteProfilePage() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return router.push('/login')
 
-    // atualiza os dados básicos
-    const { error: updErr } = await supabase
+    // Upsert em profiles
+    const { error: upsertErr } = await supabase
       .from('profiles')
-      .update({
-        display_name: `${form.firstName} ${form.lastName}`,
-        username: form.username,
-        profile_completed: true,
-      })
-      .eq('id', session.user.id)
-    if (updErr) {
-      setError(updErr.message); setLoading(false)
+      .upsert(
+        {
+          id: session.user.id,
+          display_name: `${form.firstName} ${form.lastName}`,
+          username: form.username,
+          profile_completed: true,
+        },
+        { onConflict: 'id' }
+      )
+
+    setLoading(false)
+    if (upsertErr) {
+      setError(upsertErr.message)
       return
     }
 
-    setLoading(false)
-    // decide próximo passo
+    // Próximo passo:
     if (form.wantVerify) setStep('verify')
     else router.push('/')
   }
