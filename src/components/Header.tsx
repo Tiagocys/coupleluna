@@ -9,12 +9,9 @@ export function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const isCompleteProfile = pathname === '/complete-profile'
-  const [session, setSession] = useState<any>(null)
 
-  // ⚠️ não mostra nada na página de completar perfil
-  if (isCompleteProfile) {
-    return null
-  }
+  // 1) Sempre chame o state e o effect antes de qualquer return condicional
+  const [session, setSession] = useState<any>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -25,6 +22,11 @@ export function Header() {
       listener.subscription.unsubscribe()
     }
   }, [])
+
+  // 2) Só ao final, depois de todos os Hooks, faça o early return
+  if (isCompleteProfile) {
+    return null
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()

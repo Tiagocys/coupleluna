@@ -80,15 +80,19 @@ export default function CompleteProfilePage() {
         { onConflict: 'id' }
       )
 
-    setLoading(false)
     if (upsertErr) {
       setError(upsertErr.message)
+      setLoading(false)
       return
     }
 
-    // Próximo passo:
-    if (form.wantVerify) setStep('verify')
-    else router.push('/')
+    if (form.wantVerify) {
+      setStep('verify')
+      setLoading(false)
+    } else {
+      // redirect sem mexer no loading (botão fica “Continuing…” até navegar)
+      return router.push('/')
+    }
   }
 
   const handleBack = () => setStep('info')

@@ -53,12 +53,18 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() =>
-              supabase.auth.signInWithOAuth({ provider: 'google' })
+              supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                  redirectTo: `${window.location.origin}/complete-profile`,
+                },
+              })
             }
             className="w-full mt-4 bg-red-600 text-white py-2 rounded hover:bg-red-700 transition"
           >
-            Entrar com Google
+            Log in with Google
           </button>
+
           <label htmlFor="email" className="block mb-1">Email</label>
           <input
             id="email"
