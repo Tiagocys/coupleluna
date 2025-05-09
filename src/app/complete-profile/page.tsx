@@ -1,6 +1,5 @@
 'use client'
 
-import { Header } from '../../components/Header'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import supabase from '../../../lib/supabase'
@@ -49,6 +48,37 @@ export default function CompleteProfilePage() {
         router.push('/login')
       })
   }, [initializing, router])
+
+  // 3) **Novo**: carrega o profile e preenche o form
+  useEffect(() => {
+    if (initializing) return   // espera o fluxo de sessão finalizar
+
+    async function loadProfile() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error) {
+        console.error('Error loading profile:', error.message)
+        return
+      }
+      if (profile) {
+        setForm(f => ({
+          ...f,
+          firstName: profile.display_name?.split(' ')[0] || '',
+          lastName:  profile.display_name?.split(' ').slice(1).join(' ') || '',
+          username:  profile.username ?? '',
+        }))
+      }
+    }
+
+    loadProfile()
+  }, [initializing])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked, files } = e.target
@@ -133,7 +163,6 @@ export default function CompleteProfilePage() {
 
   return (
     <>
-      <Header />
       <main className="max-w-md mx-auto p-8">
         <h1 className="text-2xl font-bold mb-4">Complete Your Profile</h1>
 
