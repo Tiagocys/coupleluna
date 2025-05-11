@@ -126,7 +126,6 @@ export default function CompleteProfilePage() {
   }
 
   const handleBack = () => setStep('info')
-
   const handleSubmitVerify = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -160,7 +159,9 @@ export default function CompleteProfilePage() {
     setLoading(false)
     router.push('/')
   }
-
+  const firstName = form.firstName ?? ''
+  const lastName  = form.lastName  ?? ''
+  const username  = form.username  ?? ''
   return (
     <>
       <main className="max-w-md mx-auto p-8">
@@ -169,30 +170,30 @@ export default function CompleteProfilePage() {
         {step === 'info' ? (
           <form onSubmit={handleSubmitInfo} className="space-y-4">
             <div>
-              <label className="block mb-1">First Name</label>
+              <label>First Name</label>
               <input
                 name="firstName"
-                value={form.firstName}
+                defaultValue={firstName}
                 onChange={handleChange}
                 className="w-full border px-3 py-2 rounded"
                 disabled={loading}
               />
             </div>
             <div>
-              <label className="block mb-1">Last Name</label>
+              <label>Last Name</label>
               <input
                 name="lastName"
-                value={form.lastName}
+                defaultValue={lastName}
                 onChange={handleChange}
                 className="w-full border px-3 py-2 rounded"
                 disabled={loading}
               />
             </div>
             <div>
-              <label className="block mb-1">Username</label>
+              <label>Username</label>
               <input
                 name="username"
-                value={form.username}
+                defaultValue={username}
                 onChange={handleChange}
                 className="w-full border px-3 py-2 rounded"
                 disabled={loading}
@@ -226,34 +227,51 @@ export default function CompleteProfilePage() {
         ) : (
           <form onSubmit={handleSubmitVerify} className="space-y-4">
             <h2 className="text-xl font-semibold">Upload Verification Docs</h2>
-            <div>
-              <label className="block mb-1">ID Front</label>
+            
+            <div className="relative w-full">
+              <img
+                src="/images/id-front.png"
+                alt="Front of ID"
+                className="pointer-events-none absolute left-4 top-1/2 w-10 h-10 -translate-y-1/2"
+              />
               <input
                 type="file"
                 name="idFront"
                 accept="image/*"
                 onChange={handleChange}
                 disabled={loading}
+                className="w-full pl-20 pr-4 py-2 border rounded"
               />
             </div>
-            <div>
-              <label className="block mb-1">ID Back</label>
+
+            <div className="relative w-full">
+              <img
+                src="/images/id-back.png"
+                alt="Back of ID"
+                className="pointer-events-none absolute left-4 top-1/2 w-10 h-10 -translate-y-1/2"
+              />
               <input
                 type="file"
                 name="idBack"
                 accept="image/*"
                 onChange={handleChange}
                 disabled={loading}
+                className="w-full pl-20 pr-4 py-2 border rounded"
               />
             </div>
-            <div>
-              <label className="block mb-1">Selfie with ID</label>
+            <div className="relative w-full">
+              <img
+                src="/images/selfie-example.png"
+                alt="Selfie with ID"
+                className="pointer-events-none absolute left-4 top-1/2 w-10 h-10 -translate-y-1/2"
+              />
               <input
                 type="file"
                 name="selfie"
                 accept="image/*"
                 onChange={handleChange}
                 disabled={loading}
+                className="w-full pl-20 pr-4 py-2 border rounded"
               />
             </div>
             {error && <p className="text-red-500">{error}</p>}

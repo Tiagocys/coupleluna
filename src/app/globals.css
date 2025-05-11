@@ -24,3 +24,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.input-with-icon {
+  background-repeat: no-repeat;
+  background-position: 10px center;
+  background-size: 40px 40px;
+  padding-left: 60px;
+  /* opcional: ajuste de altura */
+  height: 3rem; /* 48px */
+}
