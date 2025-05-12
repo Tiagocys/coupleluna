@@ -13,24 +13,40 @@ export async function middleware(req: NextRequest) {
 
   const url = req.nextUrl.clone()
 
-  // 1) Sem login → /login
+  // 1) Não logado → manda para /login
   if (!session && !url.pathname.startsWith('/login') && !url.pathname.startsWith('/signup')) {
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // 2) Se logado, busca profile_completed e verification_requested
-  if (session) {
-    const { data: profile } = await supabase
+  // 2) Logado → busca status do perfil
+if (session) {
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('profile_completed, verification_requested')
       .eq('id', session.user.id)
-      .single()
+      .single()   // <— aqui
 
-    const needsComplete =
-      !profile?.profile_completed && !profile?.verification_requested
+    if (error) {
+      console.error('Middleware profile fetch error:', error.message)
+      return res   // deixa passar para não bloquear ninguém por um erro inesperado
+    }
 
-    if (needsComplete && !url.pathname.startsWith('/complete-profile')) {
+    // 2a) se já completou ou já solicitou verificação e está em /complete-profile → /
+    if (
+      url.pathname === '/complete-profile' &&
+      (profile.profile_completed || profile.verification_requested)
+    ) {
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+
+    // 2b) se NÃO completou E NÃO solicitou verificação e NÃO está em /complete-profile → /complete-profile
+    if (
+      !profile.profile_completed &&
+      !profile.verification_requested &&
+      url.pathname !== '/complete-profile'
+    ) {
       url.pathname = '/complete-profile'
       return NextResponse.redirect(url)
     }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import supabase from '../../../lib/supabase'
 
@@ -10,6 +11,15 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Se já estiver logado, redireciona para Home
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        router.replace('/')
+      }
+    })
+  }, [router])
 
   // flag para travar cliques repetidos imediatamente
   const isSubmitting = useRef(false)

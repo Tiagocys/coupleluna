@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import supabase from '../../../lib/supabase'
 
@@ -11,88 +11,93 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        router.replace('/')  // redireciona sem histórico de login
+      }
+    })
+  }, [router])
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
-    // se não preencher os campos, já aborta
-    if (!email || !password) {
-      setError('Preencha email e senha.')
+    // 1) tenta logar
+    const { data: { session }, error: loginErr } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    if (loginErr || !session) {
+      setError(loginErr?.message || 'Login failed')
       setLoading(false)
       return
     }
 
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
+    // 2) busca flags do profile
+    const { data: profile, error: profErr } = await supabase
+      .from('profiles')
+      .select('profile_completed, verification_requested')
+      .eq('id', session.user.id)
+      .single()
 
-    const body = await res.json()
-    setLoading(false)
-
-    if (!res.ok) {
-      setError(body.error || 'Credenciais inválidas.')
-      return
+    if (profErr) {
+      console.error('Error fetching profile:', profErr.message)
+      // fallback, manda pra home
+      return router.push('/')
     }
 
-    const { session } = body
-
-    // persiste a sessão no cliente Supabase
-    await supabase.auth.setSession(session)
-
-    router.push('/')
+    // 3) decide pra onde ir
+    if (profile.profile_completed || profile.verification_requested) {
+      router.push('/')
+    } else {
+      router.push('/complete-profile')
+    }
   }
 
   return (
     <main className="max-w-md mx-auto p-8">
-      <h1 className="text-2xl font-bold mb-6">Login</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <button
-            type="button"
-            onClick={() =>
-              supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                  redirectTo: `${window.location.origin}/complete-profile`,
-                },
-              })
-            }
-            className="w-full mt-4 bg-red-600 text-white py-2 rounded hover:bg-red-700 transition"
-          >
-            Log in with Google
-          </button>
-
-          <label htmlFor="email" className="block mb-1">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            className="w-full border px-3 py-2 rounded"
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="block mb-1">Senha</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-            className="w-full border px-3 py-2 rounded"
-          />
-        </div>
-        {error && <p className="text-red-500">{error}</p>}
+      <h1 className="text-xl font-bold mb-4">Log In</h1>
+      {error && <p className="text-red-500 mb-2">{error}</p>}
+      <form onSubmit={handleLogin} className="space-y-4">
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="Email"
+          required
+          className="w-full border px-3 py-2 rounded"
+          disabled={loading}
+        />
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          placeholder="Password"
+          required
+          className="w-full border px-3 py-2 rounded"
+          disabled={loading}
+        />
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition disabled:opacity-50"
         >
-          {loading ? 'Entrando...' : 'Entrar'}
+          {loading ? 'Logging in…' : 'Log In'}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            supabase.auth.signInWithOAuth({
+              provider: 'google',
+              options: { redirectTo: `${window.location.origin}/login` },
+            })
+          }
+          className="w-full mt-2 bg-red-600 text-white py-2 rounded hover:bg-red-700 transition disabled:opacity-50"
+        >
+          Log in with Google
         </button>
       </form>
     </main>

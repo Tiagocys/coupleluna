@@ -80,6 +80,25 @@ export default function CompleteProfilePage() {
     loadProfile()
   }, [initializing])
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      const user = data.session?.user
+      if (user) {
+        supabase
+          .from('profiles')
+          .select('profile_completed, verification_requested')
+          .eq('id', user.id)
+          .single()
+          .then(({ data: p }) => {
+            if (p?.profile_completed || p?.verification_requested) {
+              router.push('/')
+            }
+          })
+      }
+    })
+  }, [router])
+
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked, files } = e.target
     if (type === 'checkbox') setForm(f => ({ ...f, [name]: checked }))
