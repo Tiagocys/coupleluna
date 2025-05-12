@@ -133,21 +133,26 @@ export default function CompleteProfilePage() {
       return setError('Please upload front, back of ID and a selfie.')
     }
     setLoading(true)
-    const { data: { session } } = await supabase.auth.getSession()
-    const prefix = `${session!.user.id}`
+    const { data: { session } } = await supabase.auth.getSession();    
+    const prefix = session.user.id; // só o UID
 
     for (const [key, file] of [
       ['idFront', form.idFront],
-      ['idBack', form.idBack],
-      ['selfie', form.selfie],
+      ['idBack',  form.idBack],
+      ['selfie',  form.selfie],
     ] as const) {
-      const path = `${prefix}/${key}-${file.name}`
+      const safeName = encodeURIComponent(file.name);
+      const path     = `${prefix}/${key}-${safeName}`;
+
       const { error: upErr } = await supabase
-        .storage.from('private-media')
-        .upload(path, file, { cacheControl: '3600', upsert: true })
+        .storage
+        .from('private-media')
+        .upload(path, file, { cacheControl: '3600', upsert: true });
+
       if (upErr) {
-        setError(upErr.message); setLoading(false)
-        return
+        setError(upErr.message);
+        setLoading(false);
+        return;
       }
     }
     // sinalizar pedido de verificação
@@ -228,52 +233,75 @@ export default function CompleteProfilePage() {
           <form onSubmit={handleSubmitVerify} className="space-y-4">
             <h2 className="text-xl font-semibold">Upload Verification Docs</h2>
             
-            <div className="relative w-full">
+            {/* ID Front */}
+          <div className="mb-6">
+            <label htmlFor="idFront" className="block font-medium mb-2">
+              ID Front Photo
+            </label>
+            <div className="relative">
               <img
                 src="/images/id-front.png"
                 alt="Front of ID"
-                className="pointer-events-none absolute left-4 top-1/2 w-10 h-10 -translate-y-1/2"
+                className="pointer-events-none absolute left-2 top-1/2 w-16 h-16 -translate-y-1/2"
               />
               <input
                 type="file"
+                id="idFront"
                 name="idFront"
                 accept="image/*"
                 onChange={handleChange}
                 disabled={loading}
-                className="w-full pl-20 pr-4 py-2 border rounded"
+                className="w-full pl-24 pr-4 py-3 border rounded"
               />
             </div>
+          </div>
 
-            <div className="relative w-full">
+          {/* ID Back */}
+          <div className="mb-6">
+            <label htmlFor="idBack" className="block font-medium mb-2">
+              ID Back Photo
+            </label>
+            <div className="relative">
               <img
                 src="/images/id-back.png"
                 alt="Back of ID"
-                className="pointer-events-none absolute left-4 top-1/2 w-10 h-10 -translate-y-1/2"
+                className="pointer-events-none absolute left-2 top-1/2 w-16 h-16 -translate-y-1/2"
               />
               <input
                 type="file"
+                id="idBack"
                 name="idBack"
                 accept="image/*"
                 onChange={handleChange}
                 disabled={loading}
-                className="w-full pl-20 pr-4 py-2 border rounded"
+                className="w-full pl-24 pr-4 py-3 border rounded"
               />
             </div>
-            <div className="relative w-full">
+          </div>
+
+          {/* Selfie */}
+          <div className="mb-6">
+            <label htmlFor="selfie" className="block font-medium mb-2">
+              Selfie with ID
+            </label>
+            <div className="relative">
               <img
                 src="/images/selfie-example.png"
-                alt="Selfie with ID"
-                className="pointer-events-none absolute left-4 top-1/2 w-10 h-10 -translate-y-1/2"
+                alt="Selfie holding ID"
+                className="pointer-events-none absolute left-2 top-1/2 w-16 h-16 -translate-y-1/2"
               />
               <input
                 type="file"
+                id="selfie"
                 name="selfie"
                 accept="image/*"
                 onChange={handleChange}
                 disabled={loading}
-                className="w-full pl-20 pr-4 py-2 border rounded"
+                className="w-full pl-24 pr-4 py-3 border rounded"
               />
             </div>
+          </div>
+
             {error && <p className="text-red-500">{error}</p>}
             <div className="flex justify-between">
               <button
