@@ -133,8 +133,16 @@ export default function CompleteProfilePage() {
       return setError('Please upload front, back of ID and a selfie.')
     }
     setLoading(true)
-    const { data: { session } } = await supabase.auth.getSession();    
-    const prefix = session.user.id; // só o UID
+    const { data: { session } } = await supabase.auth.getSession()
+
+    // Se não houver sessão, redirecione e saia da função
+    if (!session) {
+      router.push('/login')
+      return
+    }
+
+    // A partir daqui o TS sabe que session não é null
+    const prefix = session.user.id
 
     for (const [key, file] of [
       ['idFront', form.idFront],
