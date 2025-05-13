@@ -1,26 +1,27 @@
+// src/app/api/admin/approve/[id]/route.ts
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import type { NextRequest } from 'next/server'
+import supabase from '../../../../../../lib/supabase'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export async function POST(
+  request: Request,
+  context: { params: { id: string } }
+) {
+  const { id } = context.params
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params
-  const { error } = await supabaseAdmin
+  // autentica usuário admin, se necessário
+  // const { data: { session } } = await supabase.auth.getSession()
+  // if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // atualiza o perfil para verified = true e limpa verification_requested
+  const { error } = await supabase
     .from('profiles')
-    .update({ verification_requested: false, verified: true })
+    .update({ verified: true, verification_requested: false })
     .eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-  // Enviar email de notificação (exemplo com SendGrid ou similar):
-
-  // await sendEmail({
-  //   to: user.email,
-  //   subject: 'Your identity has been verified',
-  //   text: 'Congratulations, your identity verification was approved!',
-  // })
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true })
 }
