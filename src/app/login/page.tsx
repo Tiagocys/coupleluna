@@ -11,12 +11,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        router.replace('/')  // redireciona sem histórico de login
-      }
+      if (data.session) router.replace('/')
     })
   }, [router])
 
@@ -25,36 +22,18 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    // 1) tenta logar
-    const { data: { session }, error: loginErr } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const {
+      data: { session },
+      error: loginErr,
+    } = await supabase.auth.signInWithPassword({ email, password })
+
+    setLoading(false)
     if (loginErr || !session) {
-      setError(loginErr?.message || 'Login failed')
-      setLoading(false)
+      setError(loginErr?.message ?? 'Login failed')
       return
     }
-
-    // 2) busca flags do profile
-    const { data: profile, error: profErr } = await supabase
-      .from('profiles')
-      .select('profile_completed, verification_requested')
-      .eq('id', session.user.id)
-      .single()
-
-    if (profErr) {
-      console.error('Error fetching profile:', profErr.message)
-      // fallback, manda pra home
-      return router.push('/')
-    }
-
-    // 3) decide pra onde ir
-    if (profile.profile_completed || profile.verification_requested) {
-      router.push('/')
-    } else {
-      router.push('/complete-profile')
-    }
+  // 🚀 Redireciona sempre para a Home
+    router.push('/')
   }
 
   return (

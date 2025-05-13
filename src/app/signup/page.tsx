@@ -7,27 +7,16 @@ import supabase from '../../../lib/supabase'
 
 export default function SignupPage() {
   const router = useRouter()
+  const isSubmitting = useRef(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Se já estiver logado, redireciona para Home
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        router.replace('/')
-      }
-    })
-  }, [router])
-
-  // flag para travar cliques repetidos imediatamente
-  const isSubmitting = useRef(false)
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isSubmitting.current) return       // se já estamos submetendo, ignora
-    isSubmitting.current = true            // trava de vez
+    if (isSubmitting.current) return
+    isSubmitting.current = true
     setLoading(true)
     setError(null)
 
@@ -38,28 +27,39 @@ export default function SignupPage() {
       return
     }
 
-    // cria conta e já recebe session (auto-login)
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error: signErr } = await supabase.auth.signUp({
       email,
       password,
     })
 
     setLoading(false)
-
-    if (error) {
-      setError(error.message)
+    if (signErr || !data.user) {
+      setError(signErr?.message ?? 'Signup failed')
       isSubmitting.current = false
       return
     }
 
-    if (data.session) {
-      router.push('/complete-profile')
-    } else {
-      // se não teve session (por segurança),
-      // redireciona para login
-      router.push('/login')
-    }
+    // <-- upsert fora de qualquer condição de session
+    const userId = data.user.id
+    const username = email.split('@')[0]
+    await supabase.from('profiles').upsert(
+      {
+        id: userId,
+        username,
+        display_name: username,
+        profile_completed: false,
+        verification_requested: false,
+        avatar_url: null,
+      },
+      { onConflict: 'id' }
+    )
+
+    // Auto‐login já ocorreu; manda todo mundo pra Home
+    router.push('/')
+
+    isSubmitting.current = false
   }
+
 
   return (
     <main className="max-w-md mx-auto p-8">
