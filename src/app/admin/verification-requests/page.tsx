@@ -5,13 +5,11 @@ import type { Database } from '../../../../types/database'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
-interface AdminVerificationPageProps {
-  searchParams: {
-    page?: string
-  }
-}
-
-export default async function AdminVerificationPage({ searchParams }: AdminVerificationPageProps) {
+export default async function AdminVerificationPage({
+  searchParams,
+}: {
+  searchParams: { page?: string }
+}) {
   const supabase = createServerComponentClient<Database>({ cookies })
   const page = searchParams.page ? parseInt(searchParams.page, 10) : 1
   const PAGE_SIZE = 10
@@ -38,14 +36,24 @@ export default async function AdminVerificationPage({ searchParams }: AdminVerif
         <tbody>
           {requests?.map(r => (
             <tr key={r.id} className="border-t">
-              <td>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
-              <td>{r.display_name} ({r.username})</td>
+              <td>
+                {r.created_at
+                  ? new Date(r.created_at).toLocaleString()
+                  : '—'}
+              </td>
+              <td>
+                {r.display_name} (@{r.username})
+              </td>
               <td className="space-x-2">
-                <Link href={`/admin/verification-requests/approve/${r.id}`}>
-                  <button className="bg-green-600 text-white px-2 py-1 rounded">Approve</button>
+                <Link href={`/admin/verification-requests/approve/${r.id}`}>  
+                  <button className="bg-green-600 text-white px-2 py-1 rounded">
+                    Approve
+                  </button>
                 </Link>
-                <Link href={`/admin/verification-requests/reject/${r.id}`}>
-                  <button className="bg-red-600 text-white px-2 py-1 rounded">Reject</button>
+                <Link href={`/admin/verification-requests/reject/${r.id}`}>  
+                  <button className="bg-red-600 text-white px-2 py-1 rounded">
+                    Reject
+                  </button>
                 </Link>
               </td>
             </tr>
@@ -58,7 +66,9 @@ export default async function AdminVerificationPage({ searchParams }: AdminVerif
           <Link href={`/admin/verification-requests?page=${page - 1}`}>
             <button className="px-3 py-1 bg-gray-200 rounded">‹ Prev</button>
           </Link>
-        ) : <span />}
+        ) : (
+          <div />
+        )}
 
         {from + PAGE_SIZE < (count ?? 0) && (
           <Link href={`/admin/verification-requests?page=${page + 1}`}>
