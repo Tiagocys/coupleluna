@@ -1,22 +1,25 @@
 // src/app/admin/verification-requests/page.tsx
+import React from 'react'
+import Link from 'next/link'
 import type { Database } from '../../../../types/database'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import Link from 'next/link'
 
-const PAGE_SIZE = 10
+interface AdminVerificationPageProps {
+  searchParams: {
+    page?: string
+  }
+}
 
-export default async function AdminVerificationPage({ searchParams }: { searchParams?: { page?: string } }) {
+export default async function AdminVerificationPage({ searchParams }: AdminVerificationPageProps) {
   const supabase = createServerComponentClient<Database>({ cookies })
-  const page = parseInt(searchParams?.page || '1', 10)
+  const page = searchParams.page ? parseInt(searchParams.page, 10) : 1
+  const PAGE_SIZE = 10
   const from = (page - 1) * PAGE_SIZE
 
   const { data: requests, count } = await supabase
     .from('profiles')
-    .select(
-    'id, username, display_name, created_at',
-    { count: 'exact' }
-    )
+    .select('id, username, display_name, created_at', { count: 'exact' })
     .eq('verification_requested', true)
     .order('created_at', { ascending: true })
     .range(from, from + PAGE_SIZE - 1)
@@ -27,19 +30,15 @@ export default async function AdminVerificationPage({ searchParams }: { searchPa
       <table className="w-full mb-4">
         <thead>
           <tr>
-            <th>Requested At</th>
-            <th>User</th>
-            <th>Actions</th>
+            <th className="text-left">Requested At</th>
+            <th className="text-left">User</th>
+            <th className="text-left">Actions</th>
           </tr>
         </thead>
         <tbody>
           {requests?.map(r => (
             <tr key={r.id} className="border-t">
-              <td>
-                {r.created_at
-                    ? new Date(r.created_at).toLocaleString()
-                    : '—'}
-              </td>
+              <td>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
               <td>{r.display_name} ({r.username})</td>
               <td className="space-x-2">
                 <Link href={`/admin/verification-requests/approve/${r.id}`}>
@@ -54,7 +53,6 @@ export default async function AdminVerificationPage({ searchParams }: { searchPa
         </tbody>
       </table>
 
-      {/* Paginação */}
       <div className="flex justify-between">
         {page > 1 ? (
           <Link href={`/admin/verification-requests?page=${page - 1}`}>
@@ -62,7 +60,7 @@ export default async function AdminVerificationPage({ searchParams }: { searchPa
           </Link>
         ) : <span />}
 
-        {from + PAGE_SIZE < (count || 0) && (
+        {from + PAGE_SIZE < (count ?? 0) && (
           <Link href={`/admin/verification-requests?page=${page + 1}`}>
             <button className="px-3 py-1 bg-gray-200 rounded">Next ›</button>
           </Link>
