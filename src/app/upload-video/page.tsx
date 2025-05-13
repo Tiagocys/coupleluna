@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import supabase from '../../../lib/supabase'
 
 export default function UploadVideoPage() {
   const router = useRouter()
+  const [authorized, setAuthorized] = useState<boolean|null>(null)
+  const [checking, setChecking] = useState(true)
+
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const [title, setTitle] = useState('')
@@ -14,6 +17,46 @@ export default function UploadVideoPage() {
   const [thumbFile, setThumbFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+
+    // 1) Verifica sessão e profile_completed
+  useEffect(() => {
+    async function checkAccess() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      // 1) se não logado → /login
+      if (!session) {
+        router.replace('/login')
+        return
+      }
+
+      // 2) busca profile_completed
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('profile_completed')
+        .eq('id', session.user.id)
+        .single()
+
+      // se erro ou perfil não completo → /complete-profile
+      if (error || !profile.profile_completed) {
+        router.replace('/complete-profile')
+        return
+      }
+
+      // 3) está tudo certo, exibe o form
+      setAuthorized(true)
+      setChecking(false)
+    }
+
+    checkAccess()
+  }, [router])
+
+  // Enquanto checa, mostra nada ou um loading
+  if (checking) {
+    return <p className="p-8 text-center">Checking permissions…</p>
+  }
 
   // Gera thumbnail a partir do primeiro frame
   const generateThumbnail = () => {
@@ -117,24 +160,36 @@ export default function UploadVideoPage() {
             rows={3}
           />
         </div>
-        <div>
-          <label className="block mb-1">Thumbnail (optional)</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={e => setThumbFile(e.target.files?.[0] || null)}
-            disabled={loading}
-          />
+        <div className="mb-6">
+            <label htmlFor="thumb" className="block font-medium mb-2">
+            Thumbnail (optional)
+            </label>
+            <div className="border-2 border-dashed border-blue-400 rounded-lg p-4 flex items-center justify-center">
+            <input
+                type="file"
+                id="thumb"
+                accept="image/*"
+                onChange={e => setThumbFile(e.target.files?.[0] || null)}
+                disabled={loading}
+                className="w-full cursor-pointer"
+            />
+            </div>
         </div>
-        <div>
-          <label className="block mb-1">Video (MP4 only) *</label>
-          <input
-            type="file"
-            accept="video/mp4"
-            onChange={e => setVideoFile(e.target.files?.[0] || null)}
-            disabled={loading}
-            required
-          />
+        <div className="mb-6">
+            <label htmlFor="video" className="block font-medium mb-2">
+            Video (.mp4)
+            </label>
+            <div className="border-2 border-dashed border-blue-400 rounded-lg p-4 flex items-center justify-center">
+            <input
+                type="file"
+                id="video"
+                accept="video/mp4"
+                onChange={e => setVideoFile(e.target.files?.[0] || null)}
+                disabled={loading}
+                className="w-full cursor-pointer"
+                required
+            />
+            </div>
         </div>
         {error && <p className="text-red-600">{error}</p>}
         <button
